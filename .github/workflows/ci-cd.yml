@@ -117,7 +117,7 @@ jobs:
           git config --global user.name  "GitHub Actions"
           git config --global user.email "actions@github.com"
           git config --global credential.helper store
-          printf "https://%s:x-oauth-basic@github.com\n" "$GIT_TOKEN" > ~/.git-credentials
+          printf "https://%s:%s@github.com\n" "$OWNER" "$GIT_TOKEN" > ~/.git-credentials
 
           # ---- Clone or init GitOps repo
           workdir="$(mktemp -d)"
@@ -168,18 +168,6 @@ jobs:
           while IFS= read -r -d '' f; do
             sed -i -E "s|(image:\s*${REGISTRY}/${OWNER}/${APP_REPO}-[a-z0-9._-]+:)[^[:space:]]+|\1${GITHUB_SHA}|g" "$f"
           done < <(find k8s -type f -name "*deployment*.yaml" -print0)
-
-          # ---- Bump image tags in ALL *deployment*.yaml files to the current commit SHA
-          # Matches: image: ghcr.io/OWNER/APP_REPO-<service>:<anything>  -> set tag to $GITHUB_SHA
-          shopt -s nullglob
-          mapfile -d '' files < <(find k8s -type f -name "*deployment*.yaml" -print0)
-          if [ "${#files[@]}" -eq 0 ]; then
-            echo "::warning:: No deployment YAMLs found under k8s/. Skipping tag bump."
-          else
-            for f in "${files[@]}"; do
-              sed -i -E "s|(image:\s*${REGISTRY}/${OWNER}/${APP_REPO}-[a-z0-9._-]+:)[^[:space:]]+|\\1${GITHUB_SHA}|g" "$f"
-            done
-          fi
 
           # ---- Commit (if needed) and push
           git add -A
